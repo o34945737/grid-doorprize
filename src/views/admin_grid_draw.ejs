@@ -31,8 +31,10 @@
           <input id="quota" type="number" min="1" class="form-control form-control-sm ctrl-input" value="50" />
         </div>
 
-        <button id="btnDraw" class="btn btn-success btn-sm px-3">Mulai Undian</button>
-        <button id="btnResetUI" class="btn btn-outline-light btn-sm px-3">Reset UI</button>
+      <button id="btnStart" class="btn btn-success btn-sm px-3">START</button>
+      <button id="btnStop" class="btn btn-danger btn-sm px-3" disabled>STOP</button>
+      <button id="btnResetUI" class="btn btn-outline-light btn-sm px-3">Reset UI</button>
+
 
         <a href="/admin" class="btn btn-outline-light btn-sm px-3">Dashboard</a>
         <a href="/admin/logout" class="btn btn-outline-light btn-sm px-3">Logout</a>
@@ -55,7 +57,8 @@
             <div
               class="name-card <%= p.has_won ? "is-won" : "is-eligible" %>"
               data-id="<%= p.id %>"
-              title="<%= p.has_won ? "Sudah menang" : "Eligible" %>"
+              title="<%= p.has_won ? "Sudah menang" : "Eligible" %> | <%= p.department ? p.department : "-" %>"
+
             >
               <div class="name-text"><%= p.name %></div>
             </div>
@@ -68,13 +71,6 @@
         <div class="winners-head">
           <div class="winners-title">Pemenang</div>
           <div class="winners-sub" id="winnerMeta">Belum ada pemenang.</div>
-        </div>
-
-        <!-- spotlight winner -->
-        <div id="spotlight" class="spotlight hidden">
-          <div class="spotlight-badge">WINNER</div>
-          <div id="spotlightName" class="spotlight-name">—</div>
-          <div id="spotlightPrize" class="spotlight-prize">—</div>
         </div>
 
         <!-- wall of winners -->

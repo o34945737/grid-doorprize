@@ -60,13 +60,13 @@ router.get("/", requireAdmin, async (req, res) => {
 // ---------- Grid Draw page ----------
 router.get("/grid-draw", requireAdmin, async (req, res) => {
   const [participants] = await pool.query(
-    `SELECT p.id, p.name,
+    `SELECT p.id, p.name, p.department,
       CASE WHEN dw.id IS NOT NULL THEN 1 ELSE 0 END AS has_won
-     FROM participants p
-     LEFT JOIN draw_winners dw ON dw.participant_id = p.id
-     ORDER BY p.id ASC`
+    FROM participants p
+    LEFT JOIN draw_winners dw ON dw.participant_id = p.id
+    ORDER BY p.id ASC`
   );
-
+  
   const [[eligibleRow]] = await pool.query(
     `SELECT COUNT(*) AS cnt
      FROM participants p
@@ -181,7 +181,7 @@ router.post("/import", requireAdmin, upload.single("file"), async (req, res) => 
       VALUES ?`,
       [values]
     );
-    
+
     // result.affectedRows di MySQL: insert=1, update=2 (kadang), jadi ini hanya estimasi
     const upserted = values.length;
 
