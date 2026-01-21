@@ -3,54 +3,263 @@
 <head>
   <meta charset="utf-8" />
   <title>Admin - Participants</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+
+  <!-- DataTables -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/datatables.net-dt@2.0.8/css/dataTables.dataTables.min.css">
+
+<style>
+  /* ===== GLOBAL ===== */
+  body {
+    background: #f8fafc;            /* putih keabu-an lembut */
+    color: #0f172a;                 /* teks gelap */
+  }
+
+  h3, h4, h5 {
+    color: #0f172a;
+  }
+
+  /* ===== CARD ===== */
+  .card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    box-shadow: 0 6px 20px rgba(15,23,42,0.06);
+  }
+
+  /* ===== DATATABLE ===== */
+  table.dataTable {
+    color: #0f172a !important;
+    border-collapse: collapse;
+  }
+
+  table.dataTable thead th {
+    background: #f1f5f9;
+    color: #0f172a !important;
+    font-weight: 700;
+    border-bottom: 1px solid #e5e7eb !important;
+  }
+
+  table.dataTable tbody td {
+    color: #0f172a !important;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  table.dataTable tbody tr:hover {
+    background: #f8fafc;
+  }
+
+  /* ===== SEARCH & SELECT ===== */
+  .dataTables_wrapper .dataTables_filter input,
+  .dataTables_wrapper .dataTables_length select {
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    color: #0f172a;
+    border-radius: 8px;
+    padding: 6px 10px;
+  }
+
+  .dataTables_wrapper .dataTables_filter input:focus,
+  .dataTables_wrapper .dataTables_length select:focus {
+    outline: none;
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245,158,11,0.25);
+  }
+
+  /* ===== INFO & PAGINATION ===== */
+  .dataTables_wrapper .dataTables_info {
+    color: #475569 !important;
+  }
+
+  .dataTables_wrapper .dataTables_paginate .paginate_button {
+    color: #0f172a !important;
+    border-radius: 8px;
+  }
+
+  .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+    background: #f59e0b !important;
+    color: #ffffff !important;
+    border: none !important;
+  }
+
+  .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+    background: #fde68a !important;
+    color: #0f172a !important;
+  }
+
+  /* ===== BUTTON ===== */
+  .btn-warning {
+    background: #f59e0b;
+    border: none;
+    color: #fff;
+    font-weight: 700;
+  }
+
+  .btn-warning:hover {
+    background: #d97706;
+  }
+
+  .btn-outline-light {
+    color: #0f172a;
+    border-color: #cbd5e1;
+  }
+
+  .btn-outline-light:hover {
+    background: #f1f5f9;
+  }
+</style>
+
 </head>
-<body class="container py-4">
-  <div class="d-flex justify-content-between align-items-center">
-    <h2>Peserta</h2>
-    <div class="d-flex gap-2">
-      <a href="/admin" class="btn btn-outline-secondary btn-sm">Dashboard</a>
-      <a href="/admin/logout" class="btn btn-outline-secondary btn-sm">Logout</a>
-    </div>
-  </div>
 
-  <div class="card p-3 mt-3">
-    <div class="fw-bold">Import Peserta (Excel .xlsx)</div>
-    <div class="text-muted small">
-      Kolom disarankan: <code>name</code> (wajib), <code>department</code> (opsional).
-    </div>
-
-    <form class="mt-3" method="POST" action="/admin/participants/import" enctype="multipart/form-data">
-      <div class="mb-2">
-        <input type="file" name="file" accept=".xlsx" class="form-control" required>
+<body>
+  <div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h3 class="mb-0 fw-bold">📋 Participants</h3>
+        <div class="text-white-50">Daftar peserta yang sudah registrasi</div>
       </div>
-      <button class="btn btn-primary">Import Peserta</button>
-    </form>
+
+      <div class="d-flex gap-2">
+        <a href="/admin/participants.csv" class="btn btn-warning fw-bold">
+          Export CSV
+        </a>
+        <a href="/admin" class="btn btn-outline-light">
+          Dashboard
+        </a>
+      </div>
+    </div>
+
+    <div class="card p-3">
+      <table id="tblParticipants" class="display w-100">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nama</th>
+            <th>Department</th>
+            <th>Waktu Daftar</th>
+            <th style="width:140px">Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </div>
 
-  <div class="mt-4">
-    <table class="table table-sm table-striped">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Nama</th>
-          <th>department</th>
-          <th>Status</th>
-          <th>Waktu Daftar</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% participants.forEach(p => { %>
-          <tr>
-            <td><%= p.id %></td>
-            <td><%= p.name %></td>
-            <td><%= p.department || "-" %></td>
-            <td><%= p.has_won ? "Sudah dapat hadiah" : "Belum" %></td>
-            <td><%= p.created_at %></td>
-          </tr>
-        <% }) %>
-      </tbody>
-    </table>
-  </div>
+  <!-- jQuery (DataTables 2 bisa tanpa jQuery, tapi CDN ini paling aman & umum) -->
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/datatables.net@2.0.8/js/dataTables.min.js"></script>
+
+
+  <script>
+    function fmtDate(iso) {
+      if (!iso) return "";
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return String(iso);
+      return d.toLocaleString();
+    }
+
+    // biar bisa dipanggil dari onclick
+    window.dt = null;
+
+    // helper aman untuk masukin string ke attribute onclick
+    function escJS(str) {
+      return String(str ?? "")
+        .replaceAll("\\", "\\\\")
+        .replaceAll("'", "\\'")
+        .replaceAll('"', '\\"')
+        .replaceAll("\n", " ")
+        .replaceAll("\r", " ");
+    }
+
+    window.deleteParticipant = async function (id, name) {
+      const result = await Swal.fire({
+        title: "Hapus Participant?",
+        html: `
+          <div style="text-align:left">
+            <b>Nama:</b> ${String(name ?? "")}<br/>
+            <b>ID:</b> ${id}<br/><br/>
+            <small>⚠ Data pemenang (jika ada) ikut terhapus.</small>
+          </div>
+        `,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Ya, Hapus",
+        cancelButtonText: "Batal",
+        confirmButtonColor: "#dc3545",
+        cancelButtonColor: "#6c757d",
+        reverseButtons: true,
+        focusCancel: true
+      });
+
+      if (!result.isConfirmed) return;
+
+      try {
+        const res = await fetch(`/admin/participants/${id}/delete`, {
+          method: "POST",
+          headers: { "Accept": "application/json" }
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data.ok) {
+          await Swal.fire("Gagal", data.error || "Delete gagal", "error");
+          return;
+        }
+
+        await Swal.fire({
+          title: "Berhasil",
+          text: "Participant berhasil dihapus",
+          icon: "success",
+          timer: 1200,
+          showConfirmButton: false
+        });
+
+        // reload datatable TANPA refresh page
+        if (window.dt) window.dt.ajax.reload(null, false);
+      } catch (err) {
+        console.error(err);
+        await Swal.fire("Error", "Server error", "error");
+      }
+    };
+
+    $(function () {
+      window.dt = new DataTable("#tblParticipants", {
+        ajax: "/admin/participants.json",
+        columns: [
+          { data: "id" },
+          { data: "name" },
+          { data: "department" },
+          {
+            data: "created_at",
+            render: function (d) { return fmtDate(d); }
+          },
+          {
+            data: null,
+            orderable: false,
+            searchable: false,
+            render: function (row) {
+              const safeName = escJS(row.name);
+              return `
+                <button
+                  type="button"
+                  class="btn btn-danger btn-sm"
+                  onclick="deleteParticipant(${row.id}, '${safeName}')"
+                >
+                  Delete
+                </button>
+              `;
+            }
+          }
+        ],
+        pageLength: 25,
+        order: [[0, "desc"]],
+        responsive: true
+      });
+    });
+  </script>
+
 </body>
 </html>

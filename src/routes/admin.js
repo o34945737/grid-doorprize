@@ -196,4 +196,89 @@ router.post("/import", requireAdmin, upload.single("file"), async (req, res) => 
   }
 });
 
+// ---------- Participants List (DataTables) ----------
+router.get("/participants", requireAdmin, async (req, res) => {
+  res.render("admin_participants");
+});
+
+// JSON untuk DataTables (client-side)
+router.get("/participants.json", requireAdmin, async (req, res) => {
+  const [rows] = await pool.query(
+    `SELECT id, name, department, created_at
+     FROM participants
+     ORDER BY id DESC`
+  );
+  res.json({ data: rows });
+});
+
+// Export CSV semua peserta
+router.get("/participants.csv", requireAdmin, async (req, res) => {
+  const [rows] = await pool.query(
+    `SELECT id, name, department, created_at
+     FROM participants
+     ORDER BY id ASC`
+  );
+
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", "attachment; filename=participants_all.csv");
+
+  const esc = (v) => `"${String(v ?? "").replaceAll('"', '""')}"`;
+
+  const header = "id,name,department,created_at\n";
+  const lines = rows.map((r) => {
+    const dt = r.created_at ? new Date(r.created_at).toISOString() : "";
+    return [
+      r.id,
+      esc(r.name),
+      esc(r.department),
+      esc(dt)
+    ].join(",");
+  }).join("\n");
+
+  // BOM biar Excel enak buka CSV (optional tapi bagus)
+  res.send("\uFEFF" + header + lines + "\n");
+});
+
+// Delete 1 participant (admin only)
+router.post("/participants/:id/delete", requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) {
+    return res.status(400).json({ ok: false, error: "Invalid ID" });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // hapus winner dulu (kalau ada)
+    await conn.query(
+      "DELETE FROM draw_winners WHERE participant_id = ?",
+      [id]
+    );
+
+    // hapus participant
+    const [del] = await conn.query(
+      "DELETE FROM participants WHERE id = ?",
+      [id]
+    );
+
+    await conn.commit();
+
+    return res.json({
+      ok: true,
+      deleted: del.affectedRows
+    });
+
+  } catch (e) {
+    try { await conn.rollback(); } catch (_) {}
+    console.error(e);
+    return res.status(500).json({
+      ok: false,
+      error: "Gagal menghapus participant"
+    });
+  } finally {
+    conn.release();
+  }
+});
+
 module.exports = router;
