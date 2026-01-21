@@ -74,9 +74,7 @@ async function syncWinnersSnapshot() {
 
 function startRealtime() {
   const es = new EventSource("/api/stream");
-
-  es.onopen = () => console.log("[SSE] connected");
-
+  
   es.onmessage = (ev) => {
     try {
       const msg = JSON.parse(ev.data);
