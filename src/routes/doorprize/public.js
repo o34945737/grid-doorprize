@@ -1,13 +1,13 @@
 const express = require("express");
-const pool = require("../db");
+const pool = require("../../db");
 const QRCode = require("qrcode");
 
 const router = express.Router();
 
-router.get("/", (req, res) => res.redirect("/register"));
+router.get("/", (req, res) => res.redirect("/doorprize/register"));
 
 router.get("/register", (req, res) => {
-  res.render("register", {
+  res.render("doorprize/register", {
     error: null,
     success: null
   });
@@ -18,7 +18,7 @@ router.post("/register", async (req, res) => {
   const department = String(req.body.department || "").trim();
 
   if (!name || !department) {
-    return res.render("register", {
+    return res.render("doorprize/register", {
       error: "Nama dan department wajib diisi.",
       success: null
     });
@@ -26,19 +26,17 @@ router.post("/register", async (req, res) => {
 
   try {
     await pool.query(
-      `INSERT INTO participants (name, department)
-       VALUES (?, ?)`,
+      `INSERT INTO participants (name, department) VALUES (?, ?)`,
       [name, department]
     );
 
-    res.render("register", {
+    return res.render("doorprize/register", {
       error: null,
       success: "Pendaftaran berhasil! Terima kasih 🙌"
     });
-
   } catch (e) {
     console.error(e);
-    res.render("register", {
+    return res.render("doorprize/register", {
       error: "Terjadi kesalahan server.",
       success: null
     });
@@ -47,7 +45,7 @@ router.post("/register", async (req, res) => {
 
 // QR untuk link form registrasi
 router.get("/qr/register", async (req, res) => {
-  const url = `${req.protocol}://${req.get("host")}/register`;
+  const url = `${req.protocol}://${req.get("host")}/doorprize/register`;
   const dataUrl = await QRCode.toDataURL(url);
   res.type("html").send(`<img src="${dataUrl}" alt="QR Register"/><p>${url}</p>`);
 });

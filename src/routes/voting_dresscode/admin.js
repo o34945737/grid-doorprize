@@ -1,7 +1,7 @@
 const express = require("express");
-const pool = require("../db");
+const pool = require("../../db");
 const bcrypt = require("bcrypt");
-const { requireAdmin } = require("../middleware/auth");
+const { requireAdmin } = require("../../middleware/auth");
 const multer = require("multer");
 const XLSX = require("xlsx");
 
@@ -11,7 +11,6 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 8 * 1024 * 1024 } // 8MB
 });
-
 
 // ---------- Auth ----------
 router.get("/login", (req, res) => {

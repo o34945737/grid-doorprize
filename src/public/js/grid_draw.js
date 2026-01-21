@@ -66,14 +66,14 @@ function markWinner(id) {
 /* ---------------- snapshot + realtime (SSE) ---------------- */
 async function syncWinnersSnapshot() {
   try {
-    const res = await fetch("/api/winners-snapshot");
+    const res = await fetch("/doorprize/api/winners-snapshot");
     const data = await res.json();
     (data.wonIds || []).forEach(markWon);
   } catch (_) {}
 }
 
 function startRealtime() {
-  const es = new EventSource("/api/stream");
+  const es = new EventSource("/doorprize/api/stream");
   
   es.onmessage = (ev) => {
     try {
@@ -331,7 +331,7 @@ btnStop?.addEventListener("click", async (e) => {
   await sleep(420);
 
   try {
-    const res = await fetch("/api/grid-draw", {
+    const res = await fetch("/doorprize/api/grid-draw", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prize_name: v.prize_name, quota: v.quota })
