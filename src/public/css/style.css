@@ -1,0 +1,423 @@
+/* ========== Fullscreen no-scroll layout (LIGHT) ========== */
+.draw-body{
+  margin:0;
+  height:100vh;
+  overflow:hidden; /* NO SCROLL */
+  background:
+    radial-gradient(1200px 700px at 18% 12%, rgba(13,110,253,0.10), transparent 62%),
+    radial-gradient(1000px 600px at 88% 18%, rgba(25,135,84,0.10), transparent 66%),
+    radial-gradient(900px 520px at 70% 92%, rgba(255,193,7,0.10), transparent 66%),
+    #ffffff;
+  color:#0f172a;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+.draw-shell{
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+}
+
+/* TOPBAR */
+.draw-topbar{
+  height:72px;
+  flex: 0 0 72px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(15,23,42,0.10);
+  background: rgba(255,255,255,0.72);
+  backdrop-filter: blur(10px);
+}
+
+.top-title{
+  font-weight:900;
+  letter-spacing: 2px;
+  font-size:14px;
+  opacity:0.95;
+}
+.top-sub{
+  font-size:12px;
+  opacity:0.75;
+}
+.dot{ margin:0 8px; opacity:0.5; }
+
+.top-controls{
+  display:flex;
+  align-items:end;
+  gap:10px;
+  flex-wrap:nowrap;
+}
+
+.ctrl-group{ display:flex; flex-direction:column; gap:4px; }
+.ctrl-label{ font-size:11px; opacity:0.85; margin:0; }
+
+.ctrl-input{
+  width:160px;
+  background: rgba(255,255,255,0.95) !important;
+  border:1px solid rgba(15,23,42,0.16) !important;
+  color:#0f172a !important;
+}
+.ctrl-input:focus{
+  box-shadow:none !important;
+  border-color: rgba(13,110,253,0.35) !important;
+}
+
+/* MAIN AREA */
+.draw-main{
+  flex:1 1 auto;
+  height:calc(100vh - 72px);
+  display:grid;
+  grid-template-columns: 1fr 420px;
+  gap: 12px;
+  padding: 12px;
+  overflow:hidden;
+}
+
+/* LEFT GRID PANEL */
+.grid-panel{
+  height:100%;
+  overflow:hidden;
+  border:1px solid rgba(15,23,42,0.12);
+  border-radius: 18px;
+  background: rgba(255,255,255,0.70);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 12px 30px rgba(15,23,42,0.08);
+  display:flex;
+  flex-direction:column;
+}
+
+.panel-head{
+  flex: 0 0 54px;
+  padding: 10px 12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border-bottom:1px solid rgba(15,23,42,0.10);
+}
+.panel-title{
+  font-weight:800;
+  letter-spacing:1px;
+  font-size:13px;
+}
+.panel-status{
+  font-size:12px;
+  opacity:0.75;
+  text-align:right;
+  max-width: 55%;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow: ellipsis;
+}
+
+/* SUPER SMALL GRID BOXES */
+.name-grid{
+  flex:1 1 auto;
+  padding: 10px;
+  display:grid;
+  gap:6px;
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  overflow:hidden;
+}
+
+@media (max-width: 1200px){
+  .draw-main{ grid-template-columns: 1fr 380px; }
+  .name-grid{ grid-template-columns: repeat(12, minmax(0, 1fr)); }
+}
+@media (max-width: 992px){
+  .draw-main{ grid-template-columns: 1fr; }
+  .winners-panel{ display:none; }
+  .name-grid{ grid-template-columns: repeat(10, minmax(0, 1fr)); }
+}
+
+/* Default card: hijau muda */
+.name-card{
+  border: 1px solid rgba(25,135,84,0.35);
+  background: rgba(25,135,84,0.14);
+  border-radius: 10px;
+  padding: 6px 6px;
+  min-height: 32px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  user-select:none;
+  position:relative;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease, background 120ms ease;
+  box-shadow: 0 6px 14px rgba(15,23,42,0.06);
+}
+
+.name-card:hover{
+  transform: translateY(-1px);
+  border-color: rgba(25,135,84,0.55);
+}
+
+/* teks 2 baris rapi */
+.name-text{
+  font-weight:850;
+  font-size:10px;
+  line-height:1.1;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+
+/* sudah pernah menang */
+.name-card.is-won{
+  opacity: 0.38;
+  background: rgba(15,23,42,0.04);
+  border-color: rgba(15,23,42,0.10);
+}
+
+/* sweep: outline hijau */
+.name-card.sweep{
+  border-color: rgba(25,135,84,0.95);
+  box-shadow:
+    0 0 0 3px rgba(25,135,84,0.22),
+    0 0 22px rgba(25,135,84,0.22),
+    0 10px 20px rgba(15,23,42,0.08);
+  transform: translateY(-1px) scale(1.02);
+}
+
+/* winner: merah redup */
+.name-card.is-winner{
+  background: rgba(220,53,69,0.18);
+  border-color: rgba(220,53,69,0.65);
+  box-shadow:
+    0 0 0 3px rgba(220,53,69,0.14),
+    0 10px 22px rgba(15,23,42,0.10);
+}
+
+.name-card.reveal{
+  animation: pop 260ms ease-out, glow 900ms ease-out;
+}
+@keyframes pop{
+  from { transform: scale(0.88); }
+  to { transform: scale(1); }
+}
+@keyframes glow{
+  from { box-shadow: 0 0 0 0 rgba(220,53,69,0.0); }
+  to   { box-shadow: 0 0 0 10px rgba(220,53,69,0.0); }
+}
+
+/* RIGHT WINNERS PANEL */
+.winners-panel{
+  height:100%;
+  overflow:hidden;
+  border:1px solid rgba(15,23,42,0.12);
+  border-radius: 18px;
+  background: rgba(255,255,255,0.70);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 30px rgba(15,23,42,0.08);
+  display:flex;
+  flex-direction:column;
+  position:relative;
+}
+
+.winners-head{
+  flex: 0 0 68px;
+  padding: 12px 14px;
+  border-bottom:1px solid rgba(15,23,42,0.10);
+}
+.winners-title{
+  font-weight:900;
+  letter-spacing:1px;
+  font-size:14px;
+}
+.winners-sub{
+  font-size:12px;
+  opacity:0.75;
+  margin-top:2px;
+}
+
+/* Spotlight */
+.spotlight{
+  margin: 12px 14px 0;
+  border-radius: 16px;
+  padding: 12px 12px;
+  border:1px solid rgba(15,23,42,0.12);
+  background: linear-gradient(135deg, rgba(220,53,69,0.10), rgba(13,110,253,0.10));
+  box-shadow: 0 14px 40px rgba(15,23,42,0.10);
+}
+.spotlight.hidden{ display:none; }
+
+.spotlight-badge{
+  display:inline-block;
+  font-size:11px;
+  letter-spacing:2px;
+  font-weight:900;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(15,23,42,0.04);
+  border:1px solid rgba(15,23,42,0.10);
+}
+
+.spotlight-name{
+  margin-top:10px;
+  font-size:22px;
+  font-weight:950;
+  line-height:1.1;
+  animation: spotlightIn 380ms ease-out;
+}
+.spotlight-prize{
+  margin-top:6px;
+  font-size:13px;
+  opacity:0.85;
+}
+@keyframes spotlightIn{
+  from { transform: translateY(6px); opacity:0.6; }
+  to { transform: translateY(0); opacity:1; }
+}
+
+/* Winner wall */
+.winner-wall{
+  flex:1 1 auto;
+  margin: 12px 14px;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding-right:4px;
+}
+
+.winner-card{
+  border-radius: 14px;
+  padding: 10px 12px;
+  border:1px solid rgba(15,23,42,0.12);
+  background: rgba(255,255,255,0.78);
+  position:relative;
+  overflow:hidden;
+  transform: translateY(10px);
+  opacity:0;
+  animation: winnerSlideIn 360ms ease-out forwards;
+  box-shadow: 0 10px 24px rgba(15,23,42,0.08);
+}
+@keyframes winnerSlideIn{
+  to { transform: translateY(0); opacity:1; }
+}
+
+.winner-rank{
+  position:absolute;
+  top:10px;
+  right:10px;
+  font-size:11px;
+  opacity:0.65;
+}
+
+.winner-name{
+  font-weight:950;
+  font-size:16px;
+  line-height:1.1;
+}
+.winner-prize{
+  margin-top:4px;
+  font-size:12px;
+  opacity:0.85;
+}
+
+.winner-card::before{
+  content:"";
+  position:absolute;
+  top:-40%;
+  left:-30%;
+  width:40%;
+  height:180%;
+  transform: rotate(18deg);
+  background: linear-gradient(90deg, transparent, rgba(15,23,42,0.06), transparent);
+  animation: shimmer 1.2s ease-out;
+}
+@keyframes shimmer{
+  from { left:-60%; }
+  to { left:120%; }
+}
+
+.winners-footer{
+  flex: 0 0 56px;
+  padding: 10px 14px 14px;
+  border-top:1px solid rgba(15,23,42,0.10);
+}
+
+/* Confetti canvas */
+.confetti-canvas{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index: 9000;
+}
+
+/* Overlay animasi undian (tetap gelap biar fokus) */
+.draw-overlay{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background: rgba(15,23,42,0.70);
+  backdrop-filter: blur(8px);
+}
+.draw-overlay.hidden{ display:none; }
+
+.draw-overlay-inner{
+  width:min(720px, 92vw);
+  padding:28px 22px;
+  border-radius:18px;
+  background: rgba(255,255,255,0.90);
+  border:1px solid rgba(15,23,42,0.14);
+  text-align:center;
+  color:#0f172a;
+  box-shadow: 0 20px 60px rgba(15,23,42,0.25);
+}
+
+.draw-title{
+  letter-spacing: 3px;
+  font-weight:900;
+  opacity:0.92;
+  font-size:14px;
+}
+
+.draw-countdown{
+  font-size:88px;
+  font-weight:950;
+  line-height:1;
+  margin:10px 0 8px;
+  text-shadow: 0 10px 30px rgba(15,23,42,0.18);
+  animation: pulse 650ms ease-in-out infinite;
+}
+@keyframes pulse{
+  0%,100%{ transform: scale(1); opacity:1; }
+  50%{ transform: scale(1.06); opacity:0.9; }
+}
+
+.draw-sub{
+  opacity:0.9;
+  font-size:15px;
+}
+
+.draw-bar-wrap{
+  height:10px;
+  margin:18px auto 0;
+  width:min(520px, 82vw);
+  background: rgba(15,23,42,0.10);
+  border-radius:999px;
+  overflow:hidden;
+}
+
+.draw-bar{
+  height:100%;
+  width:0%;
+  background: rgba(25,135,84,0.95);
+  border-radius:999px;
+  transition: width 160ms linear;
+}
+
+/* outline-light buttons biar cocok di tema putih */
+.btn-outline-light{
+  border-color: rgba(15,23,42,0.18) !important;
+  color: rgba(15,23,42,0.85) !important;
+}
+.btn-outline-light:hover{
+  background: rgba(15,23,42,0.06) !important;
+}

@@ -1,0 +1,111 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Admin - Grid Draw</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/public/css/style.css">
+</head>
+
+<body class="draw-body">
+  <div class="draw-shell">
+    <!-- TOP BAR -->
+    <header class="draw-topbar">
+      <div class="top-left">
+        <div class="top-title">GRID DRAW</div>
+        <div class="top-sub">
+          Eligible: <b id="eligibleCount"><%= eligibleCount %></b>
+          <span class="dot">•</span>
+          Total peserta: <b><%= participants.length %></b>
+        </div>
+      </div>
+
+      <div class="top-controls">
+        <div class="ctrl-group">
+          <label class="ctrl-label">Hadiah</label>
+          <input id="prizeName" class="form-control form-control-sm ctrl-input" value="Kipas" />
+        </div>
+
+        <div class="ctrl-group">
+          <label class="ctrl-label">Kuota</label>
+          <input id="quota" type="number" min="1" class="form-control form-control-sm ctrl-input" value="50" />
+        </div>
+
+        <button id="btnDraw" class="btn btn-success btn-sm px-3">Mulai Undian</button>
+        <button id="btnResetUI" class="btn btn-outline-light btn-sm px-3">Reset UI</button>
+
+        <a href="/admin" class="btn btn-outline-light btn-sm px-3">Dashboard</a>
+        <a href="/admin/logout" class="btn btn-outline-light btn-sm px-3">Logout</a>
+      </div>
+    </header>
+
+    <!-- MAIN -->
+    <main class="draw-main">
+      <!-- LEFT: GRID -->
+      <section class="grid-panel">
+        <div class="panel-head">
+          <div class="panel-title">Peserta</div>
+          <div id="status" class="panel-status">
+            Klik <b>Mulai Undian</b> untuk mulai animasi dan reveal pemenang.
+          </div>
+        </div>
+
+        <div id="grid" class="name-grid">
+          <% participants.forEach(p => { %>
+            <div
+              class="name-card <%= p.has_won ? "is-won" : "is-eligible" %>"
+              data-id="<%= p.id %>"
+              title="<%= p.has_won ? "Sudah menang" : "Eligible" %>"
+            >
+              <div class="name-text"><%= p.name %></div>
+            </div>
+          <% }) %>
+        </div>
+      </section>
+
+      <!-- RIGHT: WINNERS -->
+      <aside class="winners-panel">
+        <div class="winners-head">
+          <div class="winners-title">Pemenang</div>
+          <div class="winners-sub" id="winnerMeta">Belum ada pemenang.</div>
+        </div>
+
+        <!-- spotlight winner -->
+        <div id="spotlight" class="spotlight hidden">
+          <div class="spotlight-badge">WINNER</div>
+          <div id="spotlightName" class="spotlight-name">—</div>
+          <div id="spotlightPrize" class="spotlight-prize">—</div>
+        </div>
+
+        <!-- wall of winners -->
+        <div id="winnerWall" class="winner-wall"></div>
+
+        <!-- footer mini -->
+        <div class="winners-footer">
+          <a class="btn btn-outline-light btn-sm w-100" href="/api/draw-winners.csv">Export Semua Pemenang CSV</a>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- Confetti canvas -->
+  <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
+
+  <!-- Overlay animasi undian -->
+    <div id="drawOverlay" class="draw-overlay hidden">
+        <div class="draw-overlay-inner">
+        <div class="draw-title">MULAI UNDIAN</div>
+        <div id="countdown" class="draw-countdown">3</div>
+        <div id="overlaySub" class="draw-sub">Siap-siap ya...</div>
+        <div class="draw-bar-wrap">
+            <div id="drawBar" class="draw-bar"></div>
+        </div>
+        </div>
+    </div>
+
+    <script>
+        window.__TOTAL_PARTICIPANTS__ = <%- Number(participants?.length || 0) %>;
+    </script>
+  <script src="/public/js/grid_draw.js"></script>
+</body>
+</html>
