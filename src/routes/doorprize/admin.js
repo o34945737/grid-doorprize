@@ -1,254 +1,209 @@
 const express = require("express");
 const pool = require("../../db");
 const bcrypt = require("bcrypt");
-const { requireAdmin } = require("../../middleware/auth");
+const path = require("path");
+const fs = require("fs");
 const multer = require("multer");
-const XLSX = require("xlsx");
+
+const { requireVotingAdmin } = require("../../middleware/auth");
 
 const router = express.Router();
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 8 * 1024 * 1024 } // 8MB
-});
+/** upload folder: src/public/uploads/voting */
+const uploadDir = path.join(__dirname, "../../public/uploads/voting");
+fs.mkdirSync(uploadDir, { recursive: true });
 
-/* =========================
-   AUTH
-========================= */
-router.get("/login", (req, res) => {
-  res.render("doorprize/admin_login", { error: null });
-});
-
-router.post("/login", async (req, res) => {
-  const { username, password } = req.body;
-
-  const [rows] = await pool.query("SELECT * FROM admins WHERE username = ?", [username]);
-  if (!rows.length) return res.render("doorprize/admin_login", { error: "Login gagal." });
-
-  const ok = await bcrypt.compare(password, rows[0].password_hash);
-  if (!ok) return res.render("doorprize/admin_login", { error: "Login gagal." });
-
-  req.session.admin = { id: rows[0].id, username: rows[0].username };
-  return res.redirect("/doorprize/admin");
-});
-
-router.get("/logout", (req, res) => {
-  req.session.destroy(() => res.redirect("/doorprize/admin/login"));
-});
-
-/* =========================
-   DASHBOARD
-========================= */
-router.get("/", requireAdmin, async (req, res) => {
-  const [[pCount]] = await pool.query("SELECT COUNT(*) AS cnt FROM participants");
-  const [[drawCount]] = await pool.query("SELECT COUNT(*) AS cnt FROM draws");
-  const [[winnerCount]] = await pool.query("SELECT COUNT(*) AS cnt FROM draw_winners");
-
-  const [[eligibleRow]] = await pool.query(
-    `SELECT COUNT(*) AS cnt
-     FROM participants p
-     LEFT JOIN draw_winners dw ON dw.participant_id = p.id
-     WHERE dw.id IS NULL`
-  );
-
-  res.render("doorprize/admin_dashboard", {
-    pCount: pCount.cnt,
-    drawCount: drawCount.cnt,
-    winnerCount: winnerCount.cnt,
-    eligibleCount: eligibleRow.cnt
-  });
-});
-
-/* =========================
-   GRID DRAW PAGE
-========================= */
-router.get("/grid-draw", requireAdmin, async (req, res) => {
-  const [participants] = await pool.query(
-    `SELECT p.id, p.name, p.department,
-      CASE WHEN dw.id IS NOT NULL THEN 1 ELSE 0 END AS has_won
-     FROM participants p
-     LEFT JOIN draw_winners dw ON dw.participant_id = p.id
-     ORDER BY p.id ASC`
-  );
-
-  const [[eligibleRow]] = await pool.query(
-    `SELECT COUNT(*) AS cnt
-     FROM participants p
-     LEFT JOIN draw_winners dw ON dw.participant_id = p.id
-     WHERE dw.id IS NULL`
-  );
-
-  res.render("doorprize/admin_grid_draw", {
-    participants,
-    eligibleCount: eligibleRow.cnt
-  });
-});
-
-/* =========================
-   LIST DRAWS
-========================= */
-router.get("/draws", requireAdmin, async (req, res) => {
-  const [draws] = await pool.query(
-    `SELECT d.*,
-      (SELECT COUNT(*) FROM draw_winners dw WHERE dw.draw_id=d.id) AS winner_count
-     FROM draws d
-     ORDER BY d.id DESC`
-  );
-
-  res.render("doorprize/admin_draws", { draws });
-});
-
-/* =========================
-   IMPORT EXCEL PARTICIPANTS
-========================= */
-router.get("/import", requireAdmin, async (req, res) => {
-  res.render("doorprize/admin_import", { msg: null, ok: true, summary: null });
-});
-
-router.get("/import/template", requireAdmin, async (req, res) => {
-  const data = [
-    { name: "John Doe", department: "IT" },
-    { name: "Jane Doe", department: "Human Resource" }
-  ];
-
-  const ws = XLSX.utils.json_to_sheet(data, { header: ["name", "department"] });
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "participants");
-
-  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
-
-  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-  res.setHeader("Content-Disposition", "attachment; filename=template_participants.xlsx");
-  res.send(buf);
-});
-
-router.post("/import", requireAdmin, upload.single("file"), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.render("doorprize/admin_import", { msg: "File tidak ditemukan.", ok: false, summary: null });
-    }
-
-    const wb = XLSX.read(req.file.buffer, { type: "buffer" });
-    const sheetName = wb.SheetNames?.[0];
-    if (!sheetName) {
-      return res.render("doorprize/admin_import", { msg: "Excel tidak punya sheet.", ok: false, summary: null });
-    }
-
-    const ws = wb.Sheets[sheetName];
-    const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
-
-    if (!rows.length) {
-      return res.render("doorprize/admin_import", { msg: "Sheet kosong (tidak ada data).", ok: false, summary: null });
-    }
-
-    function pick(obj, keys) {
-      for (const k of keys) {
-        if (Object.prototype.hasOwnProperty.call(obj, k)) return obj[k];
-      }
-      return "";
-    }
-
-    let skippedEmptyName = 0;
-    const values = [];
-
-    for (const r of rows) {
-      const name = String(pick(r, ["name", "Name", "nama", "Nama", "NAMA"])).trim();
-      const department = String(
-        pick(r, ["department", "Department", "departemen", "Departemen", "DEPARTMENT"])
-      ).trim();
-
-      if (!name) {
-        skippedEmptyName++;
-        continue;
-      }
-      values.push([name, department || null]);
-    }
-
-    if (!values.length) {
-      return res.render("doorprize/admin_import", {
-        msg: "Semua baris di-skip karena nama kosong.",
-        ok: false,
-        summary: { totalRows: rows.length, inserted: 0, skippedEmptyName }
-      });
-    }
-
-    await pool.query(
-      `INSERT INTO participants (name, department)
-       VALUES ?`,
-      [values]
-    );
-
-    return res.render("doorprize/admin_import", {
-      msg: "Import berhasil.",
-      ok: true,
-      summary: { totalRows: rows.length, inserted: values.length, skippedEmptyName }
-    });
-  } catch (e) {
-    console.error(e);
-    return res.render("doorprize/admin_import", {
-      msg: "Import gagal (cek format file).",
-      ok: false,
-      summary: null
-    });
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname || "").toLowerCase() || ".jpg";
+    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
   }
 });
 
-/* =========================
-   PARTICIPANTS (DATATABLES)
-========================= */
-router.get("/participants", requireAdmin, async (req, res) => {
-  res.render("doorprize/admin_participants");
+const upload = multer({
+  storage,
+  limits: { fileSize: 8 * 1024 * 1024 }, // 8MB
+  fileFilter: (req, file, cb) => {
+    const ok = /^image\/(png|jpe?g|webp|gif)$/i.test(file.mimetype);
+    cb(ok ? null : new Error("File harus gambar (png/jpg/webp/gif)"), ok);
+  }
 });
 
-router.get("/participants.json", requireAdmin, async (req, res) => {
-  const [rows] = await pool.query(
-    `SELECT id, name, department, created_at
-     FROM participants
-     ORDER BY id DESC`
+/* ======================
+   AUTH (pakai table admins yang sama)
+====================== */
+router.get("/login", (req, res) => {
+  res.render("voting_dresscode/admin_login", { error: null });
+});
+
+router.post("/login", async (req, res) => {
+  const username = String(req.body.username || "").trim();
+  const password = String(req.body.password || "").trim();
+
+  const [rows] = await pool.query("SELECT * FROM admins WHERE username = ?", [username]);
+  if (!rows.length) return res.render("voting_dresscode/admin_login", { error: "Login gagal." });
+
+  const ok = await bcrypt.compare(password, rows[0].password_hash);
+  if (!ok) return res.render("voting_dresscode/admin_login", { error: "Login gagal." });
+
+  req.session.votingAdmin = { id: rows[0].id, username: rows[0].username };
+  return res.redirect("/voting-dresscode/admin");
+});
+
+router.get("/logout", (req, res) => {
+  delete req.session.votingAdmin;
+  return res.redirect("/voting-dresscode/admin/login");
+});
+
+/* ======================
+   DASHBOARD
+====================== */
+router.get("/", requireVotingAdmin, async (req, res) => {
+  const [[cCount]] = await pool.query(`SELECT COUNT(*) AS cnt FROM voting_candidates`);
+  const [[vCount]] = await pool.query(`SELECT COUNT(*) AS cnt FROM voting_votes`);
+
+  const [topRows] = await pool.query(
+    `SELECT c.id, c.photo_name, c.photo_url,
+            COUNT(v.id) AS vote_count
+     FROM voting_candidates c
+     LEFT JOIN voting_votes v ON v.candidate_id = c.id
+     GROUP BY c.id
+     ORDER BY vote_count DESC, c.id ASC
+     LIMIT 5`
   );
-  res.json({ data: rows });
+
+  res.render("voting_dresscode/admin_dashboard", {
+    admin: req.session.votingAdmin,
+    stats: { candidates: cCount.cnt, votes: vCount.cnt },
+    topRows
+  });
 });
 
-router.get("/participants.csv", requireAdmin, async (req, res) => {
+/* ======================
+   RESULTS / RANKING
+====================== */
+router.get("/results", requireVotingAdmin, async (req, res) => {
   const [rows] = await pool.query(
-    `SELECT id, name, department, created_at
-     FROM participants
-     ORDER BY id ASC`
+    `SELECT c.id, c.photo_name, c.photo_url, c.created_at,
+            COUNT(v.id) AS vote_count
+     FROM voting_candidates c
+     LEFT JOIN voting_votes v ON v.candidate_id = c.id
+     GROUP BY c.id
+     ORDER BY vote_count DESC, c.id ASC`
+  );
+
+  const [[totVotes]] = await pool.query(`SELECT COUNT(*) AS cnt FROM voting_votes`);
+  const [[totCandidates]] = await pool.query(`SELECT COUNT(*) AS cnt FROM voting_candidates`);
+
+  res.render("voting_dresscode/admin_results", {
+    admin: req.session.votingAdmin,
+    rows,
+    totals: { votes: totVotes.cnt, candidates: totCandidates.cnt }
+  });
+});
+
+router.get("/results.csv", requireVotingAdmin, async (req, res) => {
+  const [rows] = await pool.query(
+    `SELECT c.id, c.photo_name, c.photo_url, c.created_at,
+            COUNT(v.id) AS vote_count
+     FROM voting_candidates c
+     LEFT JOIN voting_votes v ON v.candidate_id = c.id
+     GROUP BY c.id
+     ORDER BY vote_count DESC, c.id ASC`
   );
 
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
-  res.setHeader("Content-Disposition", "attachment; filename=participants_all.csv");
+  res.setHeader("Content-Disposition", "attachment; filename=voting_results.csv");
 
   const esc = (v) => `"${String(v ?? "").replaceAll('"', '""')}"`;
-  const header = "id,name,department,created_at\n";
-  const lines = rows.map((r) => {
-    const dt = r.created_at ? new Date(r.created_at).toISOString() : "";
-    return [r.id, esc(r.name), esc(r.department), esc(dt)].join(",");
+  const header = "rank,id,photo_name,photo_url,vote_count,created_at\n";
+
+  const lines = rows.map((r, idx) => {
+    const created = r.created_at ? new Date(r.created_at).toISOString() : "";
+    return [
+      idx + 1,
+      r.id,
+      esc(r.photo_name),
+      esc(r.photo_url),
+      r.vote_count,
+      esc(created)
+    ].join(",");
   }).join("\n");
 
   res.send("\uFEFF" + header + lines + "\n");
 });
 
-router.post("/participants/:id/delete", requireAdmin, async (req, res) => {
+/* ======================
+   CANDIDATES (CRUD)
+====================== */
+router.get("/candidates", requireVotingAdmin, async (req, res) => {
+  res.render("voting_dresscode/admin_candidates", {
+    admin: req.session.votingAdmin
+  });
+});
+
+router.get("/candidates.json", requireVotingAdmin, async (req, res) => {
+  const [rows] = await pool.query(
+    `SELECT c.id, c.photo_name, c.photo_url, c.created_at,
+            COUNT(v.id) AS vote_count
+     FROM voting_candidates c
+     LEFT JOIN voting_votes v ON v.candidate_id = c.id
+     GROUP BY c.id
+     ORDER BY c.id DESC`
+  );
+  res.json({ data: rows });
+});
+
+router.post("/upload", requireVotingAdmin, upload.single("photo"), async (req, res) => {
+  const photo_name = String(req.body.photo_name || "").trim();
+  if (!photo_name) return res.status(400).json({ ok: false, error: "Nama photo wajib diisi." });
+  if (!req.file) return res.status(400).json({ ok: false, error: "Photo wajib diupload." });
+
+  const photo_url = "/public/uploads/voting/" + req.file.filename;
+
+  await pool.query(
+    `INSERT INTO voting_candidates (photo_name, photo_url)
+     VALUES (?, ?)`,
+    [photo_name, photo_url]
+  );
+
+  res.json({ ok: true });
+});
+
+router.post("/candidates/:id/update", requireVotingAdmin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const photo_name = String(req.body.photo_name || "").trim();
+
+  if (!Number.isFinite(id)) return res.status(400).json({ ok: false, error: "Invalid ID" });
+  if (!photo_name) return res.status(400).json({ ok: false, error: "Nama photo wajib diisi" });
+
+  const [r] = await pool.query(
+    `UPDATE voting_candidates SET photo_name = ? WHERE id = ?`,
+    [photo_name, id]
+  );
+
+  res.json({ ok: true, affected: r.affectedRows });
+});
+
+router.post("/candidates/:id/delete", requireVotingAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!Number.isFinite(id)) return res.status(400).json({ ok: false, error: "Invalid ID" });
 
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
+  const [[row]] = await pool.query(`SELECT photo_url FROM voting_candidates WHERE id = ?`, [id]);
 
-    await conn.query("DELETE FROM draw_winners WHERE participant_id = ?", [id]);
-    const [del] = await conn.query("DELETE FROM participants WHERE id = ?", [id]);
+  // delete votes (jaga-jaga kalau belum FK cascade)
+  await pool.query(`DELETE FROM voting_votes WHERE candidate_id = ?`, [id]);
 
-    await conn.commit();
-    return res.json({ ok: true, deleted: del.affectedRows });
-  } catch (e) {
-    try { await conn.rollback(); } catch (_) {}
-    console.error(e);
-    return res.status(500).json({ ok: false, error: "Gagal menghapus participant" });
-  } finally {
-    conn.release();
+  const [del] = await pool.query(`DELETE FROM voting_candidates WHERE id = ?`, [id]);
+
+  // hapus file fisik (best-effort)
+  if (row?.photo_url) {
+    const filePath = path.join(__dirname, "../../", row.photo_url.replace("/public/", "public/"));
+    try { fs.unlinkSync(filePath); } catch (_) {}
   }
+
+  res.json({ ok: true, deleted: del.affectedRows });
 });
 
 module.exports = router;

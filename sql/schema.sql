@@ -34,3 +34,5 @@ CREATE TABLE IF NOT EXISTS draw_winners (
   CONSTRAINT fk_dw_draw FOREIGN KEY (draw_id) REFERENCES draws(id) ON DELETE CASCADE,
   CONSTRAINT fk_dw_participant FOREIGN KEY (participant_id) REFERENCES participants(id)
 );
+
+

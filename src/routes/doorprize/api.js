@@ -1,6 +1,8 @@
+// src/routes/doorprize/api.js
+
 const express = require("express");
 const pool = require("../../db");
-const { requireAdminApi } = require("../../middleware/auth");
+const { requireDoorprizeAdminApi } = require("../../middleware/auth");
 
 const router = express.Router();
 
@@ -12,11 +14,14 @@ const sseClients = new Set();
 function sseSend(payload) {
   const data = `data: ${JSON.stringify(payload)}\n\n`;
   for (const res of sseClients) {
-    try { res.write(data); } catch (_) {}
+    try {
+      res.write(data);
+    } catch (_) {}
   }
 }
 
-router.get("/stream", requireAdminApi, (req, res) => {
+// Realtime stream (SSE)
+router.get("/stream", requireDoorprizeAdminApi, (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
@@ -37,14 +42,15 @@ router.get("/stream", requireAdminApi, (req, res) => {
   });
 });
 
-/* =========================
-   GRID DRAW
-========================= */
-router.get("/grid-draw", requireAdminApi, (req, res) => {
+// Optional: biar jelas kalau kebuka via GET
+router.get("/grid-draw", requireDoorprizeAdminApi, (req, res) => {
   res.status(405).json({ error: "Use POST /doorprize/api/grid-draw" });
 });
 
-router.post("/grid-draw", requireAdminApi, async (req, res) => {
+/**
+ * POST /doorprize/api/grid-draw
+ */
+router.post("/grid-draw", requireDoorprizeAdminApi, async (req, res) => {
   const prize_name = String(req.body?.prize_name || "").trim();
   const quota = parseInt(req.body?.quota, 10);
 
@@ -126,55 +132,28 @@ router.post("/grid-draw", requireAdminApi, async (req, res) => {
     });
   } catch (e) {
     try { await conn.rollback(); } catch (_) {}
-    console.error("[grid-draw] ERROR:", e);
-    return res.status(500).json({ error: "Grid draw gagal.", detail: e?.message || String(e) });
+    console.error("[doorprize/api grid-draw] ERROR:", e);
+    return res.status(500).json({
+      error: "Grid draw gagal.",
+      detail: e?.message || String(e)
+    });
   } finally {
     conn.release();
   }
 });
 
-/* =========================
-   SNAPSHOT
-========================= */
-router.get("/winners-snapshot", requireAdminApi, async (req, res) => {
-  const [rows] = await pool.query(`SELECT DISTINCT participant_id FROM draw_winners`);
-  res.json({ wonIds: rows.map((r) => r.participant_id) });
-});
-
-/* =========================
-   EXPORT CSV
-========================= */
-router.get("/draw-winners.csv", requireAdminApi, async (req, res) => {
+/**
+ * Snapshot pemenang
+ */
+router.get("/winners-snapshot", requireDoorprizeAdminApi, async (req, res) => {
   const [rows] = await pool.query(
-    `SELECT d.id AS draw_id, d.prize_name, d.quota, d.created_at AS draw_created_at,
-            p.id AS participant_id, p.name AS participant_name, p.department,
-            dw.created_at AS won_at
-     FROM draw_winners dw
-     JOIN draws d ON d.id = dw.draw_id
-     JOIN participants p ON p.id = dw.participant_id
-     ORDER BY d.id DESC, dw.id ASC`
+    `SELECT DISTINCT participant_id
+     FROM draw_winners`
   );
 
-  res.setHeader("Content-Type", "text/csv");
-  res.setHeader("Content-Disposition", "attachment; filename=draw_winners_all.csv");
-
-  const header =
-    "draw_id,prize_name,quota,draw_created_at,participant_id,participant_name,department,won_at\n";
-
-  const esc = (v) => `"${String(v ?? "").replaceAll('"', '""')}"`;
-
-  const lines = rows.map((r) => [
-    r.draw_id,
-    esc(r.prize_name),
-    r.quota,
-    esc(new Date(r.draw_created_at).toISOString()),
-    r.participant_id,
-    esc(r.participant_name),
-    esc(r.department),
-    esc(new Date(r.won_at).toISOString())
-  ].join(",")).join("\n");
-
-  res.send(header + lines + "\n");
+  res.json({
+    wonIds: rows.map((r) => r.participant_id)
+  });
 });
 
 module.exports = router;

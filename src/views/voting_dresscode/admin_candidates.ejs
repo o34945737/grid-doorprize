@@ -1,0 +1,181 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Admin Voting Dresscode - Candidates</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body class="p-4 bg-light">
+
+<div class="container">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h4 class="m-0">📸 Voting Dresscode - Manage Candidates</h4>
+      <div class="text-muted small">Login: <b><%= admin.username %></b></div>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/voting-dresscode/admin" class="btn btn-outline-secondary btn-sm">Dashboard</a>
+      <a href="/voting-dresscode/admin/results" class="btn btn-success btn-sm">Results</a>
+      <a href="/voting-dresscode/" class="btn btn-outline-secondary btn-sm">User Page</a>
+      <a href="/voting-dresscode/admin/logout" class="btn btn-outline-danger btn-sm">Logout</a>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="fw-bold mb-2">Upload Candidate</div>
+      <form id="frmUpload" class="row g-2" enctype="multipart/form-data">
+        <div class="col-md-6">
+          <label class="form-label">Nama Photo</label>
+          <input name="photo_name" class="form-control" required placeholder="Contoh: Dresscode Team A">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Photo</label>
+          <input type="file" name="photo" class="form-control" accept="image/*" required>
+        </div>
+        <div class="col-12">
+          <button class="btn btn-warning">Upload</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body table-responsive">
+      <table id="tbl" class="table align-middle">
+        <thead>
+          <tr>
+            <th style="width:70px">ID</th>
+            <th style="width:120px">Photo</th>
+            <th>Nama Photo</th>
+            <th style="width:120px">Votes</th>
+            <th style="width:160px">Aksi</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.datatables.net/2.1.8/js/dataTables.min.js"></script>
+
+<script>
+  function escapeHtml(s){
+    return String(s ?? "").replace(/[&<>"']/g, (m)=>({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[m]));
+  }
+
+  let dt;
+
+  $(function(){
+    dt = new DataTable("#tbl", {
+      ajax: "/voting-dresscode/admin/candidates.json",
+      order: [[0, "desc"]],
+      columns: [
+        { data: "id" },
+        {
+          data: "photo_url",
+          orderable: false,
+          render: (d)=> `<img src="${escapeHtml(d)}" width="90" height="90" style="border-radius:12px; object-fit:cover;">`
+        },
+        {
+          data: "photo_name",
+          render: (d)=> `<div class="fw-bold">${escapeHtml(d)}</div>`
+        },
+        {
+          data: "vote_count",
+          render: (d)=> `🗳 <b>${Number(d || 0)}</b>`
+        },
+        {
+          data: null,
+          orderable: false,
+          render: (r)=>{
+            const safeName = String(r.photo_name || "").replace(/'/g, "\\'");
+            return `
+              <button class="btn btn-outline-primary btn-sm" onclick="editName(${r.id}, '${safeName}')">Edit</button>
+              <button class="btn btn-danger btn-sm" onclick="delCandidate(${r.id}, '${safeName}')">Delete</button>
+            `;
+          }
+        }
+      ]
+    });
+
+    $("#frmUpload").on("submit", async function(e){
+      e.preventDefault();
+      const fd = new FormData(this);
+
+      try{
+        const r = await fetch("/voting-dresscode/admin/upload", { method:"POST", body: fd });
+        const j = await r.json().catch(()=>({}));
+
+        if(!r.ok || !j.ok){
+          return Swal.fire("Gagal", j.error || "Upload gagal", "error");
+        }
+
+        await Swal.fire({ title:"Berhasil", text:"Upload sukses", icon:"success", timer: 1100, showConfirmButton:false });
+        this.reset();
+        dt.ajax.reload(null,false);
+      }catch(err){
+        console.error(err);
+        Swal.fire("Error", "Server error", "error");
+      }
+    });
+  });
+
+  async function editName(id, current){
+    const { value } = await Swal.fire({
+      title: "Edit Nama Photo",
+      input: "text",
+      inputValue: current || "",
+      showCancelButton: true,
+      confirmButtonText: "Simpan",
+      cancelButtonText: "Batal"
+    });
+    if(value === undefined) return;
+
+    const photo_name = String(value || "").trim();
+    if(!photo_name) return Swal.fire("Gagal", "Nama tidak boleh kosong", "error");
+
+    const r = await fetch(`/voting-dresscode/admin/candidates/${id}/update`, {
+      method:"POST",
+      headers: { "Content-Type":"application/json", "Accept":"application/json" },
+      body: JSON.stringify({ photo_name })
+    });
+    const j = await r.json().catch(()=>({}));
+
+    if(!r.ok || !j.ok) return Swal.fire("Gagal", j.error || "Update gagal", "error");
+
+    Swal.fire({ title:"OK", text:"Nama diupdate", icon:"success", timer: 900, showConfirmButton:false });
+    dt.ajax.reload(null,false);
+  }
+
+  async function delCandidate(id, name){
+    const ok = await Swal.fire({
+      title: "Hapus Photo?",
+      html: `<b>${escapeHtml(name)}</b><br>ID: ${id}<br><br><small>⚠ Vote terkait akan ikut terhapus</small>`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Ya, Hapus",
+      cancelButtonText: "Batal",
+      confirmButtonColor: "#dc3545",
+      reverseButtons: true
+    });
+    if(!ok.isConfirmed) return;
+
+    const r = await fetch(`/voting-dresscode/admin/candidates/${id}/delete`, { method:"POST", headers:{ "Accept":"application/json" } });
+    const j = await r.json().catch(()=>({}));
+
+    if(!r.ok || !j.ok) return Swal.fire("Gagal", j.error || "Delete gagal", "error");
+
+    Swal.fire({ title:"Berhasil", text:"Candidate dihapus", icon:"success", timer: 900, showConfirmButton:false });
+    dt.ajax.reload(null,false);
+  }
+</script>
+
+</body>
+</html>
