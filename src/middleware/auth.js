@@ -1,5 +1,3 @@
-// src/middleware/auth.js
-
 function requireDoorprizeAdmin(req, res, next) {
   if (req.session?.doorprizeAdmin) return next();
   return res.redirect("/doorprize/admin/login");

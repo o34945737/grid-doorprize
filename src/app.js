@@ -45,12 +45,12 @@ app.use("/voting-dresscode/api", votingApiRoutes);
 // home
 app.get("/", (req, res) => {
   res.send(`
-    <h3>OK ✅ Server Running</h3>
+    <h3>OK Server Running</h3>
     <ul>
       <li><a href="/doorprize/register">Doorprize Register</a></li>
       <li><a href="/doorprize/admin/">Doorprize Admin</a></li>
       <li><a href="/voting-dresscode/">Voting Dresscode</a></li>
-      <li><a href="/voting-dresscode/admin/login">Voting Dresscode Admin Login</a></li>
+      <li><a href="/voting-dresscode/admin/">Voting Dresscode Admin</a></li>
     </ul>
   `);
 });
@@ -61,7 +61,9 @@ app.use((err, req, res, next) => {
   res.status(500).send(`<pre>${err.stack || err}</pre>`);
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log("Server running on port", PORT);
+app.listen(process.env.PORT || 3000, () => {
+  console.log("Server running on port", process.env.PORT || 3000);
 });
+
+
+module.exports = app; 
