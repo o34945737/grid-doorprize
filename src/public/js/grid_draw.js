@@ -13,10 +13,6 @@ const eligibleCountEl = $("eligibleCount");
 const winnerMetaEl = $("winnerMeta");
 const winnerWallEl = $("winnerWall");
 
-const spotlightEl = $("spotlight");
-const spotlightNameEl = $("spotlightName");
-const spotlightPrizeEl = $("spotlightPrize");
-
 const overlay = $("drawOverlay");
 const countdownEl = $("countdown");
 const overlaySubEl = $("overlaySub");
@@ -24,6 +20,13 @@ const drawBarEl = $("drawBar");
 
 const confettiCanvas = $("confettiCanvas");
 const cctx = confettiCanvas ? confettiCanvas.getContext("2d") : null;
+
+/* ✅ spotlight elements */
+const spotlightWrap = $("winnerSpotlight");
+const spotlightPrizeEl = $("spotlightPrize");
+const spotlightRankEl = $("spotlightRank");
+const spotlightNameEl = $("spotlightName");
+const spotlightDeptEl = $("spotlightDept");
 
 /* ---------------- helpers ---------------- */
 function safeSetHTML(el, html) { if (el) el.innerHTML = html; }
@@ -48,6 +51,17 @@ function hideOverlay() {
   safeAddClass(overlay, "hidden");
 }
 
+/* ---------------- spotlight ---------------- */
+function showSpotlight() { safeRemoveClass(spotlightWrap, "hidden"); }
+function hideSpotlight() { safeAddClass(spotlightWrap, "hidden"); }
+
+function setSpotlight(rank, name, dept, prizeName){
+  safeSetText(spotlightPrizeEl, `Hadiah: ${prizeName}`);
+  safeSetText(spotlightRankEl, `#${rank}`);
+  safeSetText(spotlightNameEl, name || "—");
+  safeSetText(spotlightDeptEl, dept ? dept : " ");
+}
+
 /* ---------------- grid state ---------------- */
 function markWon(id) {
   const card = getCardById(id);
@@ -64,6 +78,8 @@ function markWinner(id) {
 }
 
 /* ---------------- snapshot + realtime (SSE) ---------------- */
+let isRevealing = false;
+
 async function syncWinnersSnapshot() {
   try {
     const res = await fetch("/doorprize/api/winners-snapshot");
@@ -74,15 +90,20 @@ async function syncWinnersSnapshot() {
 
 function startRealtime() {
   const es = new EventSource("/doorprize/api/stream");
-  
-  es.onmessage = (ev) => {
+
+  es.onmessage = async (ev) => {
     try {
       const msg = JSON.parse(ev.data);
       if (msg.type === "draw_completed") {
-        (msg.winners || []).forEach((w) => {
-          markWinner(w.id);
-          addWinnerCard(0, w.name, w.department, msg.draw?.prize_name || "");
-        });
+        // kalau lagi reveal di browser ini, biarin flow local yg handle UI
+        // kalau browser lain, minimal markWinner di grid biar sinkron
+        if (isRevealing) {
+          (msg.winners || []).forEach((w) => markWinner(w.id));
+          return;
+        }
+
+        // mode realtime normal: mark winners aja (tanpa spam list kanan)
+        (msg.winners || []).forEach((w) => markWinner(w.id));
 
         if (eligibleCountEl) {
           const current = parseInt(eligibleCountEl.textContent || "0", 10);
@@ -113,21 +134,34 @@ function resizeConfetti() {
 window.addEventListener("resize", resizeConfetti);
 resizeConfetti();
 
-function confettiBurst(x, y) {
+/* petasan: burst besar */
+function confettiBurst(x, y, power = 1) {
   if (!cctx) return;
-  const count = 80;
+  const count = Math.floor(90 * power);
   for (let i = 0; i < count; i++) {
     confettiParticles.push({
       x, y,
-      vx: (Math.random() - 0.5) * 10,
-      vy: (Math.random() - 1.2) * 10,
+      vx: (Math.random() - 0.5) * (12 * power),
+      vy: (Math.random() - 1.2) * (12 * power),
       g: 0.22 + Math.random() * 0.08,
-      life: 70 + Math.floor(Math.random() * 35),
+      life: 80 + Math.floor(Math.random() * 40),
       r: 2 + Math.random() * 3,
       rot: Math.random() * Math.PI,
       vrot: (Math.random() - 0.5) * 0.25
     });
   }
+}
+
+/* petasan: triple burst */
+async function fireCrackers(){
+  const cx = window.innerWidth * 0.50;
+  const cy = window.innerHeight * 0.36;
+
+  confettiBurst(cx, cy, 1.2);
+  await sleep(120);
+  confettiBurst(cx - 180, cy + 60, 0.9);
+  await sleep(120);
+  confettiBurst(cx + 180, cy + 60, 0.9);
 }
 
 function stepConfetti() {
@@ -145,7 +179,7 @@ function stepConfetti() {
     cctx.save();
     cctx.translate(p.x, p.y);
     cctx.rotate(p.rot);
-    cctx.globalAlpha = Math.max(0, p.life / 100);
+    cctx.globalAlpha = Math.max(0, p.life / 110);
     cctx.fillRect(-p.r, -p.r, p.r * 2, p.r * 2);
     cctx.restore();
   }
@@ -158,26 +192,18 @@ function clearWinnersUI() {
   safeSetHTML(winnerWallEl, "");
   safeSetText(winnerMetaEl, "Belum ada pemenang.");
 
-  safeAddClass(spotlightEl, "hidden");
+  hideSpotlight();
   safeSetText(spotlightNameEl, "—");
-  safeSetText(spotlightPrizeEl, "—");
+  safeSetText(spotlightPrizeEl, "Hadiah: —");
+  safeSetText(spotlightRankEl, "#—");
+  safeSetText(spotlightDeptEl, " ");
 
-  // jangan hapus is-won
   getCards().forEach((el) => el.classList.remove("is-winner", "reveal", "sweep", "is-picking", "sweep-strong"));
 
   safeSetHTML(
     statusEl,
     'Klik <b>START</b> untuk mulai acak (tanpa berhenti), lalu klik <b>STOP</b> untuk keluarkan pemenang.'
   );
-}
-
-function showSpotlight(rank, name, department, prize) {
-  safeRemoveClass(spotlightEl, "hidden");
-  safeSetText(
-    spotlightNameEl,
-    `${rank}. ${name}${department ? " (" + department + ")" : ""}`
-  );
-  safeSetText(spotlightPrizeEl, `Hadiah: ${prize}`);
 }
 
 function addWinnerCard(rank, name, department, prize) {
@@ -193,23 +219,48 @@ function addWinnerCard(rank, name, department, prize) {
   winnerWallEl.prepend(card);
 }
 
+/* ✅ reveal: tampil di tengah dulu, list kanan belakangan */
 async function revealWinners(winners, prizeName) {
+  isRevealing = true;
+
   hideOverlay();
-  safeSetHTML(statusEl, `Hasil undian: <b>${prizeName}</b> — pemenang muncul satu per satu.`);
+  safeSetHTML(statusEl, `Hasil undian: <b>${prizeName}</b> — pemenang tampil di tengah dulu, lalu masuk list.`);
+
   safeSetText(winnerMetaEl, `Total pemenang: ${winners.length}`);
+
+  // simpan dulu, nanti render setelah selesai
+  const pending = [];
+
+  showSpotlight();
 
   for (let i = 0; i < winners.length; i++) {
     const rank = i + 1;
     const w = winners[i];
 
-    await sleep(160);
-
+    // highlight grid winner
     markWinner(w.id);
-    showSpotlight(rank, w.name, w.department, prizeName);
-    addWinnerCard(rank, w.name, w.department, prizeName);
 
-    confettiBurst(window.innerWidth * 0.78, window.innerHeight * 0.28);
+    // tampilkan di tengah
+    setSpotlight(rank, w.name, w.department, prizeName);
+
+    // petasan tiap pemenang
+    await fireCrackers();
+
+    // tahan sebentar biar kebaca
+    await sleep(650);
+
+    // simpan untuk list kanan (commit belakangan)
+    pending.push({ rank, name: w.name, department: w.department, prize: prizeName });
   }
+
+  // selesai reveal tengah
+  hideSpotlight();
+
+  // baru render list kanan sekaligus
+  safeSetHTML(winnerWallEl, "");
+  pending.forEach((p) => addWinnerCard(p.rank, p.name, p.department, p.prize));
+
+  isRevealing = false;
 }
 
 /* ---------------- INPUT VALIDATION ---------------- */
@@ -223,11 +274,7 @@ function validateInput() {
   return { ok: true, prize_name, quota };
 }
 
-/* ---------------- INFINITE SHUFFLE (RAMAI) ----------------
-   - highlight banyak kotak sekaligus
-   - stop hanya saat STOP diklik
-   - ringan: clear hanya highlight sebelumnya
------------------------------------------------------------ */
+/* ---------------- INFINITE SHUFFLE ---------------- */
 let isShuffling = false;
 let shuffleRAF = 0;
 
@@ -238,13 +285,7 @@ function shuffleStart() {
   let prev = [];
   let tick = 0;
 
-  const pickCount = () => {
-    // jumlah kotak aktif per frame (rame)
-    // contoh:
-    // - 50 peserta -> ~8-10
-    // - 200 peserta -> ~18-28
-    return Math.max(8, Math.min(28, Math.floor(cards.length / 8)));
-  };
+  const pickCount = () => Math.max(8, Math.min(28, Math.floor(cards.length / 8)));
 
   const frame = () => {
     if (!isShuffling) {
@@ -255,24 +296,18 @@ function shuffleStart() {
 
     tick++;
 
-    // clear highlight sebelumnya saja (ringan)
     prev.forEach((el) => el.classList.remove("sweep-strong", "is-picking"));
     prev = [];
 
     const n = pickCount();
     const used = new Set();
 
-    // pilih index unik sebanyak n
-    while (used.size < n) {
-      used.add(Math.floor(Math.random() * cards.length));
-    }
+    while (used.size < n) used.add(Math.floor(Math.random() * cards.length));
 
-    // fase awal lebih “strong”
     const cls = tick < 70 ? "sweep-strong" : "is-picking";
 
     used.forEach((i) => {
       const el = cards[i];
-      // optional: jangan highlight yang sudah menang
       if (el.classList.contains("is-won")) return;
       el.classList.add(cls);
       prev.push(el);
@@ -288,12 +323,10 @@ function shuffleStop() {
   isShuffling = false;
   if (shuffleRAF) cancelAnimationFrame(shuffleRAF);
   shuffleRAF = 0;
-
-  // bersihin sisa highlight
   getCards().forEach((c) => c.classList.remove("sweep-strong", "is-picking"));
 }
 
-/* ---------------- EVENTS: START / STOP / RESET ---------------- */
+/* ---------------- EVENTS ---------------- */
 btnStart?.addEventListener("click", (e) => {
   e.preventDefault();
 
@@ -317,14 +350,11 @@ btnStop?.addEventListener("click", async (e) => {
 
   const v = validateInput();
   if (!v.ok) return safeSetText(statusEl, v.msg);
-
   if (!isShuffling) return;
 
-  // STOP shuffle dulu, baru ambil pemenang
   shuffleStop();
   if (btnStop) btnStop.disabled = true;
 
-  // overlay dramatis sebentar
   showOverlay();
   safeSetText(countdownEl, "✓");
   safeSetText(overlaySubEl, "Menentukan pemenang...");

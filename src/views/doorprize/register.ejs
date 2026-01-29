@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="id">
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Daftar Peserta</title>
+  <title>Participant Registration</title>
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -44,11 +44,11 @@
         <div class="card p-4">
 
           <h3 class="text-center mb-3 fw-bold">
-            🎉 Registrasi Peserta
+            🎉 Participant Registration
           </h3>
 
           <p class="text-center text-muted mb-4">
-            Silakan isi data untuk mengikuti doorprize
+            Please fill in your details to join the door prize event
           </p>
 
           <% if (error) { %>
@@ -61,47 +61,30 @@
 
           <form method="POST" action="/doorprize/register">
             <div class="mb-3">
-              <label class="form-label fw-semibold">Nama Lengkap</label>
+              <label class="form-label fw-semibold">Full Name</label>
               <input
                 type="text"
                 name="name"
                 class="form-control"
-                placeholder="Masukkan nama"
+                placeholder="Enter your name"
                 required
               >
             </div>
 
             <div class="mb-4">
-              <label class="form-label fw-semibold">Department</label>
+              <label class="form-label fw-semibold">Division</label>
               <select name="department" class="form-select" required>
-                <option value="">-- Pilih Department --</option>
-                <option>Non Department</option>
-                <option>IT</option>
-                <option>Human Resource</option>
-                <option>Finance & Accounting</option>
-                <option>Supply Chain</option>
-                <option>Customer Service</option>
-                <option>GA</option>
-                <option>Marketing</option>
-                <option>TSP - Live Streaming</option>
-                <option>Performance Marketing</option>
-                <option>Data Analytic</option>
-                <option>Business - 1</option>
-                <option>Sales</option>
-                <option>Legal</option>
-                <option>Business - 4</option>
-                <option>OPPO</option>
-                <option>TSP - Creative</option>
-                <option>TSP - Commercial</option>
-                <option>Business Development</option>
-                <option>Business - 2</option>
-                <option>Business - 3</option>
-                <option>Business Intelligence</option>
+                <option value="">-- Select Division --</option>
+                <option>Brand Management</option>
+                <option>Business Service Center</option>
+                <option>Finance & Legal</option>
+                <option>HR & GA</option>
+                <option>Non Division</option>
               </select>
             </div>
 
             <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">
-              Daftar Sekarang
+              Register Now
             </button>
           </form>
 

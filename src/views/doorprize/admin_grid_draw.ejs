@@ -31,10 +31,10 @@
           <input id="quota" type="number" min="1" class="form-control form-control-sm ctrl-input" value="50" />
         </div>
 
-      <button id="btnStart" class="btn btn-success btn-sm px-3">START</button>
-      <button id="btnStop" class="btn btn-danger btn-sm px-3" disabled>STOP</button>
-      <button id="btnResetUI" class="btn btn-outline-light btn-sm px-3">Reset UI</button>
-      
+        <button id="btnStart" class="btn btn-success btn-sm px-3">START</button>
+        <button id="btnStop" class="btn btn-danger btn-sm px-3" disabled>STOP</button>
+        <button id="btnResetUI" class="btn btn-outline-light btn-sm px-3">Reset UI</button>
+
         <a href="/doorprize/admin" class="btn btn-outline-light btn-sm px-3">Dashboard</a>
         <a href="/doorprize/admin/logout" class="btn btn-outline-light btn-sm px-3">Logout</a>
       </div>
@@ -57,7 +57,6 @@
               class="name-card <%= p.has_won ? "is-won" : "is-eligible" %>"
               data-id="<%= p.id %>"
               title="<%= p.has_won ? "Sudah menang" : "Eligible" %> | <%= p.department ? p.department : "-" %>"
-
             >
               <div class="name-text"><%= p.name %></div>
             </div>
@@ -72,10 +71,8 @@
           <div class="winners-sub" id="winnerMeta">Belum ada pemenang.</div>
         </div>
 
-        <!-- wall of winners -->
         <div id="winnerWall" class="winner-wall"></div>
 
-        <!-- footer mini -->
         <div class="winners-footer">
           <a class="btn btn-outline-light btn-sm w-100" href="/doorprize/api/draw-winners.csv">Export Semua Pemenang CSV</a>
         </div>
@@ -86,21 +83,32 @@
   <!-- Confetti canvas -->
   <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
 
-  <!-- Overlay animasi undian -->
-    <div id="drawOverlay" class="draw-overlay hidden">
-        <div class="draw-overlay-inner">
-        <div class="draw-title">MULAI UNDIAN</div>
-        <div id="countdown" class="draw-countdown">3</div>
-        <div id="overlaySub" class="draw-sub">Siap-siap ya...</div>
-        <div class="draw-bar-wrap">
-            <div id="drawBar" class="draw-bar"></div>
-        </div>
-        </div>
+  <!-- Overlay animasi undian (loading / menentukan) -->
+  <div id="drawOverlay" class="draw-overlay hidden">
+    <div class="draw-overlay-inner">
+      <div class="draw-title">MULAI UNDIAN</div>
+      <div id="countdown" class="draw-countdown">3</div>
+      <div id="overlaySub" class="draw-sub">Siap-siap ya...</div>
+      <div class="draw-bar-wrap">
+        <div id="drawBar" class="draw-bar"></div>
+      </div>
     </div>
+  </div>
 
-    <script>
-        window.__TOTAL_PARTICIPANTS__ = <%- Number(participants?.length || 0) %>;
-    </script>
+  <!-- ✅ SPOTLIGHT WINNER (TENGAH) -->
+  <div id="winnerSpotlight" class="winner-spotlight hidden">
+    <div class="winner-spotlight-inner">
+      <div id="spotlightPrize" class="spotlight-prize">Hadiah: -</div>
+      <div id="spotlightRank" class="spotlight-rank">#1</div>
+      <div id="spotlightName" class="spotlight-name">Nama Pemenang</div>
+      <div id="spotlightDept" class="spotlight-dept">Dept</div>
+      <div class="spotlight-sub">🎉 Selamat! 🎉</div>
+    </div>
+  </div>
+
+  <script>
+    window.__TOTAL_PARTICIPANTS__ = <%- Number(participants?.length || 0) %>;
+  </script>
   <script src="/public/js/grid_draw.js"></script>
 </body>
 </html>

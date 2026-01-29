@@ -182,27 +182,28 @@ router.post("/candidates/:id/delete", requireVotingAdmin, async (req, res) => {
    RESULTS PAGE
 ====================== */
 router.get("/results", requireVotingAdmin, async (req, res) => {
-  const [maleRows] = await pool.query(
-    `SELECT c.id, c.photo_name, c.photo_url, COUNT(v.id) AS vote_count
-     FROM voting_candidates c
-     LEFT JOIN voting_votes v ON v.candidate_id = c.id
-     WHERE c.gender='M'
-     GROUP BY c.id
-     ORDER BY vote_count DESC, c.id ASC`
-  );
-  const [femaleRows] = await pool.query(
-    `SELECT c.id, c.photo_name, c.photo_url, COUNT(v.id) AS vote_count
-     FROM voting_candidates c
-     LEFT JOIN voting_votes v ON v.candidate_id = c.id
-     WHERE c.gender='F'
-     GROUP BY c.id
-     ORDER BY vote_count DESC, c.id ASC`
-  );
+  const [maleRows] = await pool.query(`
+    SELECT c.id, c.photo_name, c.photo_url, COUNT(v.id) AS vote_count
+    FROM voting_candidates c
+    LEFT JOIN voting_votes v ON v.candidate_id = c.id
+    WHERE c.gender='M'
+    GROUP BY c.id
+    ORDER BY vote_count DESC, c.id ASC
+  `);
+
+  const [femaleRows] = await pool.query(`
+    SELECT c.id, c.photo_name, c.photo_url, COUNT(v.id) AS vote_count
+    FROM voting_candidates c
+    LEFT JOIN voting_votes v ON v.candidate_id = c.id
+    WHERE c.gender='F'
+    GROUP BY c.id
+    ORDER BY vote_count DESC, c.id ASC
+  `);
 
   res.render("voting_dresscode/admin_results", {
     admin: req.session.votingAdmin,
-    maleRows,
-    femaleRows
+    maleRows: maleRows || [],
+    femaleRows: femaleRows || []
   });
 });
 
